@@ -1,10 +1,8 @@
-import { _decorator, Component, Prefab, CCInteger, instantiate, Node, Label, Vec3 } from 'cc';
-import { PlayerController } from './PlayerController';
+import { _decorator, CCInteger, Component, instantiate, Label, math, Node, Prefab, Vec3 } from "cc";
+import { BLOCK_SIZE, PlayerController } from "./PlayerController";
 const { ccclass, property } = _decorator;
 
-export const BLOCK_SIZE = 40;
-
-enum GameState{
+enum GameState {
     GS_INIT,
     GS_PLAYING,
     GS_END,
@@ -15,21 +13,26 @@ enum BlockType {
     BT_STONE,
 }
 
-@ccclass('GameManager')
+@ccclass("GameManager")
 export class GameManager extends Component {
 
-    @property({type: Prefab})
-    public boxPrefab: Prefab|null = null;
-    @property({type: CCInteger})
+    @property({ type: Prefab })
+    public boxPrefab: Prefab | null = null;
+    @property({ type: CCInteger })
     public roadLength: number = 50;
     private _road: BlockType[] = [];
 
     @property({ type: Node })
-    public startMenu: Node | null = null; // 开始的 UI
+    public startMenu: Node | null = null;
     @property({ type: PlayerController })
-    public playerCtrl: PlayerController | null = null; // 角色控制器
-    @property({type: Label})
-    public stepsLabel: Label|null = null; // 计步器
+    public playerCtrl: PlayerController | null = null;
+    @property({ type: Label })
+    public stepsLabel: Label | null = null;
+
+    start() {
+        this.setCurState(GameState.GS_INIT);
+        this.playerCtrl?.node.on('JumpEnd', this.onPlayerJumpEnd, this);
+    }
 
     init() {
         if (this.startMenu) {
@@ -45,11 +48,38 @@ export class GameManager extends Component {
         }
     }
 
-    generateRoad () {
+    setCurState(value: GameState) {
+        switch (value) {
+            case GameState.GS_INIT:
+                this.init();
+                break;
+            case GameState.GS_PLAYING:
+                if (this.startMenu) {
+                    this.startMenu.active = false;
+                }
+
+                if (this.stepsLabel) {
+                    this.stepsLabel.string = '0';   // 将步数重置为0
+                }
+
+                setTimeout(() => {      //直接设置active会直接开始监听鼠标事件，做了一下延迟处理
+                    if (this.playerCtrl) {
+                        this.playerCtrl.setInputActive(true);
+                    }
+                }, 0.1);
+                break;
+            case GameState.GS_END:
+                break;
+        }
+    }
+
+    generateRoad() {
+
         this.node.removeAllChildren();
 
         this._road = [];
-        this._road.push(BlockType.BT_STONE)
+        // startPos
+        this._road.push(BlockType.BT_STONE);
 
         for (let i = 1; i < this.roadLength; i++) {
             if (this._road[i - 1] === BlockType.BT_NODE) {
@@ -73,50 +103,14 @@ export class GameManager extends Component {
             return null;
         }
 
-        let block: Node|null = null;
-        switch(type) {
+        let block: Node | null = null;
+        switch (type) {
             case BlockType.BT_STONE:
                 block = instantiate(this.boxPrefab);
                 break;
         }
 
         return block;
-    }
-
-    setCurState (value: GameState) {
-        switch(value) {
-            case GameState.GS_INIT:
-                this.init();
-                break;
-            case GameState.GS_PLAYING:
-                this.onPlaying();
-                break;
-            case GameState.GS_END:
-                break;
-        }
-    }
-
-    onPlaying() {
-        if (this.startMenu) {
-            this.startMenu.active = false;
-        }
-
-        if (this.stepsLabel) {
-            this.stepsLabel.string = '0';   // 将步数重置为0
-        }
-
-        setTimeout(() => {      //直接设置active会直接开始监听鼠标事件，做了一下延迟处理
-            if (this.playerCtrl) {
-                this.playerCtrl.setInputActive(true);
-            }
-        }, 0.1);
-    }
-
-    onPlayerJumpEnd(moveIndex: number) {
-        if (this.stepsLabel) {
-            this.stepsLabel.string = '' + (moveIndex >= this.roadLength ? this.roadLength : moveIndex);
-        }
-        this.checkResult(moveIndex);
     }
 
     onStartButtonClicked() {
@@ -126,21 +120,18 @@ export class GameManager extends Component {
     checkResult(moveIndex: number) {
         if (moveIndex < this.roadLength) {
             if (this._road[moveIndex] == BlockType.BT_NODE) {   //跳到了空方块上
-
-                this.setCurState(GameState.GS_INIT)
+                this.setCurState(GameState.GS_INIT);
             }
         } else {    // 跳过了最大长度
             this.setCurState(GameState.GS_INIT);
         }
     }
 
-    start() {
-        this.setCurState(GameState.GS_INIT);
-        this.playerCtrl?.node.on('JumpEnd', this.onPlayerJumpEnd, this);
-    }
-
-    update(deltaTime: number) {
-
+    onPlayerJumpEnd(moveIndex: number) {
+        if (this.stepsLabel) {
+            this.stepsLabel.string = '' + (moveIndex >= this.roadLength ? this.roadLength : moveIndex);
+        }
+        this.checkResult(moveIndex);
     }
 }
 

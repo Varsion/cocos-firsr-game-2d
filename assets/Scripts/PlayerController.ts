@@ -1,11 +1,14 @@
-import { Vec3, input, Input, EventMouse, _decorator, Component, Node, Animation  } from 'cc';
+import { Vec3, input, Input, EventMouse, _decorator, Component, Node, Animation  } from "cc";
 const { ccclass, property } = _decorator;
 
 // 放大比
 export const BLOCK_SIZE = 40;
 
-@ccclass('PlayerController')
+@ccclass("PlayerController")
 export class PlayerController extends Component {
+
+    @property(Animation)
+    BodyAnim:Animation = null;
 
     private _startJump: boolean = false;
     private _jumpStep: number = 0;
@@ -17,15 +20,8 @@ export class PlayerController extends Component {
     private _targetPos: Vec3 = new Vec3();
     private _curMoveIndex: number = 0;
 
-    @property(Animation)
-    BodyAnim:Animation = null;
-
-    start() {
-        // input.on(Input.EventType.MOUSE_UP, this.onMouseUp, this)
-    }
-
-    reset() {
-        this._curMoveIndex = 0;
+    start () {
+        //input.on(Input.EventType.MOUSE_UP, this.onMouseUp, this);
     }
 
     setInputActive(active: boolean) {
@@ -36,12 +32,17 @@ export class PlayerController extends Component {
         }
     }
 
+    reset() {
+        this._curMoveIndex = 0;
+    }
+
     onMouseUp(event: EventMouse) {
-        if(event.getButton() == 0) {
+        if (event.getButton() === 0) {
             this.jumpByStep(1);
-        } else if (event.getButton() == 2) {
+        } else if (event.getButton() === 2) {
             this.jumpByStep(2);
         }
+
     }
 
     jumpByStep(step: number) {
@@ -51,6 +52,11 @@ export class PlayerController extends Component {
         this._startJump = true;
         this._jumpStep = step;
         this._curJumpTime = 0;
+
+        const clipName = step == 1 ? 'oneStep' : 'twoStep';
+        const state = this.BodyAnim.getState(clipName);
+        this._jumpTime = state.duration;
+
         this._curJumpSpeed = this._jumpStep * BLOCK_SIZE/ this._jumpTime;
         this.node.getPosition(this._curPos);
         Vec3.add(this._targetPos, this._curPos, new Vec3(this._jumpStep* BLOCK_SIZE, 0, 0));
@@ -88,4 +94,3 @@ export class PlayerController extends Component {
         }
     }
 }
-
